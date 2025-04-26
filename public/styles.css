@@ -1,0 +1,31 @@
+* { box-sizing: border-box; }
+body {
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  margin: 0;
+  background: #f5f7fa;
+}
+h1 { margin: 0 0 .5em; font-size: 1.8rem; }
+#count { font-size: 3.4rem; font-weight: 700; margin-bottom: 1.4em; }
+button {
+  padding: .8em 2.2em;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 12px;
+  background: #1088f0;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:disabled { opacity: .5; cursor: default; }
+#message {
+  color: #999;
+  margin-top: 1em;
+  font-size: .9rem;
+  text-align: center;
+  max-width: 20em;
+}
