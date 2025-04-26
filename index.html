@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Step Counter</title>
+<style>
+body{font-family:sans-serif;text-align:center;margin-top:25vh}
+h1{font-size:3rem} #count{font-size:4rem;margin-top:1rem}
+button{padding:.6rem 1.2rem;font-size:1rem;border-radius:8px;border:0}
+</style>
+
+<h1>Шагов: <span id="count">0</span></h1>
+<button id="start">Старт</button>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+const tg   = window.Telegram.WebApp;
+const btn  = document.getElementById('start');
+const out  = document.getElementById('count');
+
+let steps = 0, g = 0, prev = 0, α = .975, THR = 1.2, MIN = 300;
+
+btn.onclick = () => {
+  tg.startAccelerometer({refresh_rate:25});           // запрашиваем 40 Гц
+  btn.disabled = true; btn.textContent = 'Идём...';
+};
+
+window.addEventListener('accelerometer_changed', e => {
+  const {x,y,z} = e.detail, mag = Math.hypot(x,y,z);
+  g = α*g + (1-α)*mag;
+  const a = mag - g, t = performance.now();
+
+  if (a>THR && t-prev>MIN) { steps++; prev = t; out.textContent = steps; }
+});
+
+tg.ready();                                           // сигнал Telegram, что UI загружен
+</script>
