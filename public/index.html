@@ -4,39 +4,7 @@
   <meta charset="utf-8">
   <title>Шагомер Telegram Mini App</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100dvh;
-      margin: 0;
-      background: #f5f7fa;
-    }
-    h1 { margin: 0 0 .5em; font-size: 1.8rem; }
-    #count { font-size: 3.4rem; font-weight: 700; margin-bottom: 1.4em; }
-    button {
-      padding: .8em 2.2em;
-      font-size: 1.1rem;
-      border: none;
-      border-radius: 12px;
-      background: #1088f0;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button:disabled { opacity: .5; cursor: default; }
-    #message {
-      color: #999;
-      margin-top: 1em;
-      font-size: .9rem;
-      text-align: center;
-      max-width: 20em;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <h1>Шагов сегодня</h1>
@@ -46,83 +14,7 @@
 
   <!-- Telegram SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script>
-    // Проверяем, что запущены внутри Telegram Mini App
-    if (!window.Telegram?.WebApp) {
-      document.body.innerHTML =
-        '<p style="padding:2em;text-align:center">' +
-        'Откройте через кнопку бота в мобильном Telegram.' +
-        '</p>';
-    } else {
-      const webApp = Telegram.WebApp;
-      const btn = document.getElementById('toggle');
-      const out = document.getElementById('count');
-      const msg = document.getElementById('message');
-
-      // Параметры алгоритма подсчёта шагов
-      let steps = 0;
-      let g = 0;
-      let lastTime = 0;
-      const alpha = 0.975;      // для фильтра гравитации
-      const THRESHOLD = 1.2;    // порог для обнаружения шага (m/s²)
-      const MIN_INTERVAL = 300; // минимальный интервал между шагами, мс
-
-      // Когда датчик успешно запущен
-      webApp.onEvent('accelerometerStarted', () => {
-        btn.textContent = 'Стоп';
-        btn.disabled = false;
-        msg.textContent = 'Держите телефон в руке или в кармане и идите 😊';
-      });
-
-      // Когда приходит новая выборка акселерометра
-      webApp.onEvent('accelerometerChanged', () => {
-        const { x, y, z } = Telegram.WebApp.Accelerometer;
-        const mag = Math.hypot(x, y, z);
-        g = alpha * g + (1 - alpha) * mag;
-        const a = mag - g;
-        const now = performance.now();
-
-        if (a > THRESHOLD && now - lastTime > MIN_INTERVAL) {
-          steps++;
-          lastTime = now;
-          out.textContent = steps;
-        }
-      });
-
-      // Ошибка при запуске датчика
-      webApp.onEvent('accelerometerFailed', (params) => {
-        btn.textContent = 'Старт';
-        btn.disabled = false;
-        msg.textContent = 'Ошибка акселерометра: ' + (params.error || 'Неизвестная');
-      });
-
-      // Датчик остановлен
-      webApp.onEvent('accelerometerStopped', () => {
-        btn.textContent = 'Старт';
-        btn.disabled = false;
-        msg.textContent = 'Пауза';
-      });
-
-      // Обработчик кнопки Старт/Стоп
-      btn.addEventListener('click', () => {
-        if (Telegram.WebApp.Accelerometer.isStarted) {
-          btn.disabled = true;
-          Telegram.WebApp.Accelerometer.stop();
-        } else {
-          // Сбрасываем счётчик при каждом новом старте
-          steps = 0;
-          out.textContent = 0;
-
-          btn.disabled = true;
-          btn.textContent = 'Запрос…';
-          msg.textContent = '';
-          Telegram.WebApp.Accelerometer.start({ refresh_rate: 100 });
-        }
-      });
-
-      // Сообщаем Telegram, что UI готов
-      webApp.ready();
-    }
-  </script>
+  <script src="js/storage.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
