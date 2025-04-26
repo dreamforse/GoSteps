@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Настройки шагомера</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Настройки</h1>
+
+  <label for="goal">Целевая дневная норма шагов:</label>
+  <input type="number" id="goal" placeholder="Например, 10000" />
+
+  <fieldset style="margin-top:1em">
+    <legend>Уведомлять при достижении % цели:</legend>
+    <label><input type="checkbox" class="notify" value="25" /> 25%</label><br/>
+    <label><input type="checkbox" class="notify" value="50" /> 50%</label><br/>
+    <label><input type="checkbox" class="notify" value="75" /> 75%</label><br/>
+    <label><input type="checkbox" class="notify" value="100" /> 100%</label>
+  </fieldset>
+
+  <button id="saveBtn">Сохранить</button>
+  <div id="status" style="margin-top:1em;color:#1088f0"></div>
+
+  <!-- Telegram SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/settings.js"></script>
+</body>
+</html>
