@@ -1,52 +1,88 @@
 <!doctype html>
-<meta charset="utf-8" />
-<title>Step Counter</title>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Шагомер Telegram Mini App</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
 <style>
-body{font-family:sans-serif;text-align:center;margin-top:25vh}
-h1{font-size:3rem} #count{font-size:4rem;margin-top:1rem}
-button{padding:.6rem 1.2rem;font-size:1rem;border-radius:8px;border:0}
+*{box-sizing:border-box}body{font-family:sans-serif;display:flex;flex-direction:column;
+align-items:center;justify-content:center;height:100dvh;margin:0;background:#f5f7fa}
+h1{margin:0 0 .5em;font-size:1.8rem}
+#count{font-size:3.4rem;font-weight:700;margin-bottom:1.4em}
+button{padding:.8em 2.2em;font-size:1.1rem;border:0;border-radius:12px;
+background:#1088f0;color:#fff;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.msg{color:#999;margin-top:1em;font-size:.9rem;text-align:center;max-width:20em}
 </style>
 
-<h1>Шагов: <span id="count">0</span></h1>
-<button id="start">Старт</button>
+<h1>Шагов сегодня</h1>
+<div id="count">0</div>
+<button id="btn">Старт</button>
+<div class="msg" id="msg"></div>
 
+<!-- Telegram SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-if (!Telegram?.WebApp) {
-  document.body.innerHTML = 'Откройте через кнопку бота в мобильном Telegram';
+/* ===== Проверяем, что запущены внутри Telegram Web App ===== */
+if (!window.Telegram?.WebApp) {
+  document.body.innerHTML =
+    '<p style="padding:2em;text-align:center">Откройте через кнопку бота в мобильном Telegram.</p>';
 } else {
-  const tg  = Telegram.WebApp;
-  const btn = document.getElementById('start');
-  const out = document.getElementById('count');
+  const tg   = Telegram.WebApp;          // короткий псевдоним
+  const btn  = document.getElementById('btn');
+  const out  = document.getElementById('count');
+  const msg  = document.getElementById('msg');
 
-  let steps = 0, g = 0, prev = 0, α=.975, THR=1.2, MIN=300;
+  /* ------- Алгоритм подсчёта шагов (простая пиковая детекция) ------- */
+  let steps = 0, g = 0, prev = 0;
+  const α = 0.975,            // фильтр гравитации
+        THR = 1.15,           // порог (G)
+        MIN = 300;            // минимальный интервал между шагами, мс
 
-  btn.onclick = () => {
-    tg.startAccelerometer({refresh_rate:25});
-    btn.textContent = '⏳ Ждём датчик...';
-    btn.disabled  = true;
-  };
+  /* обработчик событий акселерометра */
+  window.addEventListener('accelerometer_changed', e => {
+    const {x,y,z} = e.detail;
+    const mag = Math.hypot(x,y,z);       // модуль ускорения
+    g = α*g + (1-α)*mag;                 // high-pass (убираем g)
+    const a = mag - g;
+    const t = performance.now();
 
-  /* успех */
-  window.addEventListener('accelerometer_started', () => {
-    btn.textContent = 'Идём…';
+    if (a > THR && t - prev > MIN) {     // нашли пик
+      steps++; prev = t;
+      out.textContent = steps;
+    }
   });
 
-  /* ошибка */
+  /* успешный старт датчика */
+  window.addEventListener('accelerometer_started', () => {
+    btn.textContent = 'Стоп';
+    btn.disabled = false;
+    msg.textContent = 'Держите телефон в руке или в кармане и идите 😊';
+  });
+
+  /* ошибки датчика */
   window.addEventListener('accelerometer_failed', e => {
-    alert('Ошибка акселерометра: ' + e.detail?.error);
+    const err = e.detail?.error ?? 'unknown';
+    msg.textContent = 'Ошибка: ' + err;
     btn.textContent = 'Старт';
     btn.disabled = false;
   });
 
-  /* шаги */
-  window.addEventListener('accelerometer_changed', e => {
-    const {x,y,z} = e.detail, mag = Math.hypot(x,y,z);
-    g = α*g + (1-α)*mag;
-    const a = mag - g, t = performance.now();
-    if (a>THR && t-prev>MIN) { steps++; prev=t; out.textContent = steps; }
-  });
+  /* кнопка старт/стоп */
+  btn.onclick = () => {
+    if (btn.textContent === 'Стоп') {
+      tg.stopAccelerometer();
+      btn.textContent = 'Старт';
+      msg.textContent = 'Пауза';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Запрос…';
+    msg.textContent = '';
+    tg.startAccelerometer({refresh_rate:25});
+  };
 
-  tg.ready();
+  tg.ready();                 // сообщаем Telegram, что UI готов
 }
 </script>
+</html>
