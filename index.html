@@ -20,10 +20,6 @@
 
   <!-- Telegram SDK остаётся классическим -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-- <!-- Модули так не работают -->
-- <script type="module" src="js/storage.js"></script>
-- <script type="module" src="js/main.js"></script>
-+ <!-- Подключаем только главный модуль: он сам импортит storage.js -->
-+ <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
