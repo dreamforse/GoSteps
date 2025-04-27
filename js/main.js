@@ -12,42 +12,49 @@ const btn    = document.getElementById('toggle');
 const out    = document.getElementById('count');
 const msg    = document.getElementById('message');
 
-// --- Инициализация ---
+// --- Настройка и начальное состояние ---
 let steps = loadSteps();    // загружаем накопленные сегодня шаги
 out.textContent = steps;
 
-let g = 0, lastTime = 0;
-const alpha = 0.975, THRESHOLD = 1.2, MIN_INTERVAL = 300;
+let g = 0;
+let lastTime = 0;
+const alpha = 0.975;
+const THRESHOLD = 1.2;
+const MIN_INTERVAL = 300;
 
-// Флаг: дождались ли первой тряски?
+// Флаг калибровки: дождались первой тряски?
 let isCalibrated = false;
 
-// --- Вешаем события Телеграма ---
+// --- Обработчики Telegram.WebApp ---
 webApp.onEvent('accelerometerStarted', () => {
-  // после старта датчика ждём всплеска, не меняем кнопку
+  // После старта ждем тряску, не сбрасываем шаги
   btn.textContent = 'Встряхните телефон';
   btn.disabled = false;
   msg.textContent = '';
 });
 
+// Общий слушатель: и калибровка, и подсчет
 webApp.onEvent('accelerometerChanged', () => {
   const { x, y, z } = Telegram.WebApp.Accelerometer;
   const mag = Math.hypot(x, y, z);
+
+  // Фильтр гравитации
   g = alpha * g + (1 - alpha) * mag;
   const a = mag - g;
   const now = performance.now();
 
-  // если ещё не откалибровано — ждём первого пика
+  // 1) Калибровка: ждём первого пика
   if (!isCalibrated) {
     if (a > THRESHOLD) {
       isCalibrated = true;
-      msg.textContent = 'Калибровка завершена, идём 😊';
+      lastTime = now;
+      msg.textContent = 'Калибровка завершена, начинаем считать шаги!';
       btn.textContent = 'Стоп';
     }
     return;
   }
 
-  // после калибровки считаем шаги
+  // 2) После калибровки — подсчет шагов
   if (a > THRESHOLD && now - lastTime > MIN_INTERVAL) {
     steps++;
     lastTime = now;
@@ -67,7 +74,7 @@ webApp.onEvent('accelerometerStopped', () => {
   btn.textContent = 'Старт';
   btn.disabled = false;
   msg.textContent = 'Пауза';
-  // сохраняем в историю, но НЕ обнуляем steps
+  // Сохраняем в историю (не обнуляем steps)
   saveHistory({
     date: new Date().toISOString().slice(0, 10),
     steps
@@ -78,6 +85,7 @@ webApp.onEvent('accelerometerStopped', () => {
 function checkNotifications() {
   const { goal = 0, notifyPercents = [] } = loadSettings();
   if (!goal || !notifyPercents.length) return;
+
   notifyPercents.forEach(p => {
     if (steps === Math.floor(goal * p / 100)) {
       webApp.showAlert(`Вы прошли ${p}% от цели!`);
@@ -88,7 +96,7 @@ function checkNotifications() {
   }
 }
 
-// --- Обработчик Старт/Стоп ---
+// --- Обработчик кнопки Старт/Стоп ---
 btn.addEventListener('click', () => {
   btn.disabled = true;
 
@@ -98,12 +106,12 @@ btn.addEventListener('click', () => {
     return;
   }
 
-  // Старт: запускаем акселерометр и ждём тряску
+  // Старт: скидываем флаг калибровки, ждем первой тряски
   isCalibrated = false;
   lastTime = 0;
   btn.textContent = 'Запрос…';
   Telegram.WebApp.Accelerometer.start({ refresh_rate: 100 });
 });
 
-// --- Готовность UI ---
+// --- Сообщаем Telegram, что UI готов ---
 webApp.ready();
