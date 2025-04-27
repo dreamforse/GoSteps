@@ -12,50 +12,55 @@ const btn    = document.getElementById('toggle');
 const out    = document.getElementById('count');
 const msg    = document.getElementById('message');
 
-// --- Настройка и начальное состояние ---
+// --- Начальное состояние и загрузка ---
 let steps = loadSteps();
 out.textContent = steps;
 
-// параметры фильтра и детекции
-let g = 0;
-let lastTime = 0;
-const alpha = 0.975;
-const THRESHOLD = 1.2;    // порог для калибровки и для шагов
-const MIN_INTERVAL = 300; // мс между шагами
+// --- Параметры фильтрации и детекции ---
+let g = 0;                // фильтр гравитации
+let lastTime = 0;         // время последнего засчитанного шага
+const alpha = 0.975;      // коэффициент фильтра
+const STEP_THRESHOLD = 1.2;    // порог для реальных шагов
+const CAL_THRESHOLD  = 2.5;    // жёсткий порог для калибровки
+const MIN_INTERVAL   = 300;    // мс между шагами
 
-// флаги
-let gravityInitialized = false;  // сделали ли первый замер g
-let isCalibrated = false;        // произошла ли «реальная» калибровка
+// --- Флаги калибровки ---
+let gravityInitialized = false;  // первый замер g уже взят?
+let isCalibrated       = false;  // прошли ли «жесткую» калибровку?
+let calSpikes          = 0;      // сколько пиков выше CAL_THRESHOLD поймали
 
-// --- События Telegram.WebApp ---
-// Старт акселерометра
+// --- Обработчики Telegram.WebApp ---
+// Событие успешного старта акселерометра
 webApp.onEvent('accelerometerStarted', () => {
   btn.textContent = 'Встряхните телефон';
   btn.disabled = false;
   msg.textContent = '';
 });
 
-// Универсальный обработчик сэмплов акселерометра
+// Универсальный слушатель новых сэмплов
 webApp.onEvent('accelerometerChanged', () => {
-  // текущие оси
   const { x, y, z } = Telegram.WebApp.Accelerometer;
   const mag = Math.hypot(x, y, z);
 
-  // 1) При первом сэмпле просто инициализируем фильтр и выходим
+  // 1) Первый замер инициализирует фильтр, шаги не считаем
   if (!gravityInitialized) {
     g = mag;
     gravityInitialized = true;
     return;
   }
 
-  // 2) Апдейт фильтра и вычисление «ускорения» без гравитации
+  // 2) Обновляем фильтр и считаем текущее «ускорение»
   g = alpha * g + (1 - alpha) * mag;
   const a = mag - g;
   const now = performance.now();
 
-  // 3) Калибровка: ждём первого реального пика
+  // 3) Жёсткая калибровка: ждём минимум 2 пика выше CAL_THRESHOLD
   if (!isCalibrated) {
-    if (a > THRESHOLD) {
+    if (a > CAL_THRESHOLD) {
+      calSpikes++;
+      // можно добавить: сбрасывать calSpikes, если слишком долго нет пиков?
+    }
+    if (calSpikes >= 2) {
       isCalibrated = true;
       lastTime = now;
       msg.textContent = 'Калибровка завершена, начинаем считать шаги!';
@@ -64,8 +69,8 @@ webApp.onEvent('accelerometerChanged', () => {
     return;
   }
 
-  // 4) Подсчёт шагов уже после калибровки
-  if (a > THRESHOLD && now - lastTime > MIN_INTERVAL) {
+  // 4) Собственно подсчёт шагов после калибровки
+  if (a > STEP_THRESHOLD && now - lastTime > MIN_INTERVAL) {
     steps++;
     lastTime = now;
     out.textContent = steps;
@@ -74,26 +79,25 @@ webApp.onEvent('accelerometerChanged', () => {
   }
 });
 
-// Ошибка датчика
+// Ошибка акселерометра
 webApp.onEvent('accelerometerFailed', ({ error }) => {
   btn.textContent = 'Старт';
   btn.disabled = false;
   msg.textContent = 'Ошибка акселерометра: ' + (error || 'Неизвестная');
 });
 
-// Остановка датчика
+// Остановка акселерометра
 webApp.onEvent('accelerometerStopped', () => {
   btn.textContent = 'Старт';
   btn.disabled = false;
   msg.textContent = 'Пауза';
-  // сохраняем в историю, но не обнуляем steps
   saveHistory({
     date: new Date().toISOString().slice(0, 10),
     steps
   });
 });
 
-// Проверка уведомлений по достижению %
+// Уведомления при достижении процентов цели
 function checkNotifications() {
   const { goal = 0, notifyPercents = [] } = loadSettings();
   if (!goal || !notifyPercents.length) return;
@@ -112,19 +116,21 @@ function checkNotifications() {
 btn.addEventListener('click', () => {
   btn.disabled = true;
 
-  // если идёт подсчёт — останавливаем
   if (Telegram.WebApp.Accelerometer.isStarted) {
+    // Стопим
     Telegram.WebApp.Accelerometer.stop();
     return;
   }
 
-  // иначе — сбрасываем флаги и запускаем ожидание тряски
+  // Новый старт — сбрасываем калибровочные флаги, но не шаги
   gravityInitialized = false;
-  isCalibrated = false;
-  lastTime = 0;
+  isCalibrated       = false;
+  calSpikes          = 0;
+  lastTime           = 0;
+
   btn.textContent = 'Запрос…';
   Telegram.WebApp.Accelerometer.start({ refresh_rate: 100 });
 });
 
-// Готовность UI
+// Сообщаем Telegram, что UI готов
 webApp.ready();
