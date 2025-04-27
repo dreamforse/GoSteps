@@ -1,20 +1,43 @@
+// public/js/storage.js
+
+// helper
+function getUserId() {
+  return Telegram.WebApp.initDataUnsafe?.user?.id || 'guest';
+}
+function today() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function stepsKey() {
+  return `steps_${getUserId()}_${today()}`;
+}
+function historyKey() {
+  return `history_${getUserId()}`;
+}
+function settingsKey() {
+  return `settings_${getUserId()}`;
+}
+
 export function saveSteps(count) {
-  localStorage.setItem('stepsToday', count);
+  localStorage.setItem(stepsKey(), String(count));
 }
 export function loadSteps() {
-  return parseInt(localStorage.getItem('stepsToday') || '0', 10);
+  return parseInt(localStorage.getItem(stepsKey()) || '0', 10);
 }
+
 export function saveHistory(entry) {
-  const history = JSON.parse(localStorage.getItem('stepsHistory') || '[]');
-  history.push(entry);
-  localStorage.setItem('stepsHistory', JSON.stringify(history));
+  const key = historyKey();
+  const arr = JSON.parse(localStorage.getItem(key) || '[]');
+  arr.push(entry);
+  localStorage.setItem(key, JSON.stringify(arr));
 }
 export function loadHistory() {
-  return JSON.parse(localStorage.getItem('stepsHistory') || '[]');
+  return JSON.parse(localStorage.getItem(historyKey()) || '[]');
 }
-export function saveSettings(settings) {
-  localStorage.setItem('stepSettings', JSON.stringify(settings));
+
+export function saveSettings(obj) {
+  localStorage.setItem(settingsKey(), JSON.stringify(obj));
 }
 export function loadSettings() {
-  return JSON.parse(localStorage.getItem('stepSettings') || '{}');
+  return JSON.parse(localStorage.getItem(settingsKey()) || '{}');
 }
