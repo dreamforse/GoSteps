@@ -14,15 +14,16 @@
   <div id="message"></div>
 
   <nav style="margin-top:1.5em; display:flex; flex-direction:column; gap:0.5em;">
-    <a href="settings.html" style="color:#1088f0; text-decoration:none;">
-      ⚙ Настройки
-    </a>
-    <a href="history.html" style="color:#1088f0; text-decoration:none;">
-      📈 История
-    </a>
+    <a href="settings.html">⚙ Настройки</a>
+    <a href="history.html">📈 История</a>
   </nav>
 
+  <!-- Telegram SDK остаётся классическим -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" src="js/main.js"></script>
+- <!-- Модули так не работают -->
+- <script type="module" src="js/storage.js"></script>
+- <script type="module" src="js/main.js"></script>
++ <!-- Подключаем только главный модуль: он сам импортит storage.js -->
++ <script type="module" src="js/main.js"></script>
 </body>
 </html>
